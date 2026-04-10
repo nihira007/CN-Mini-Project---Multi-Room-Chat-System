@@ -64,13 +64,13 @@ python client.py --host <SERVER_IP>
 ## 📸 Screenshots
 
 ###  Login
-![Login](screenshots/login.png)
+![Login](screenshots/Login.png)
 
 ###  Commands
-![Commands](screenshots/commands.png)
+![Commands](screenshots/Commands.png)
 
 ###  Chat Room
-![Chat](screenshots/chat.png)
+![Chat](screenshots/Chat.png)
 
 ---
 
