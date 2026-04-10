@@ -19,18 +19,16 @@ ROOMS_FILE = "rooms.json"
 HOST    = "0.0.0.0"
 PORT    = 9000
 
-# ── In-memory stores ──────────────────────────────────
-clients    = {}          # {username: {"sock": sock, "room": str|None}}
-rooms      = {}          # {room_name: {"creator": str, "password": str|None, "members": {username: timestamp}}}
-users_db   = {}          # {username: hashed_password}
+# -------------------- In-memory stores ----------------------------
+clients    = {}       
+rooms      = {}         
+users_db   = {}          
 lock       = threading.Lock()
 running    = True
-server     = None        # assigned at bottom
+server     = None       
 
-# ─────────────────────────────────────────────────────
 #  HELPERS
-# ─────────────────────────────────────────────────────
-        
+
 def _hash(pwd: str) -> str:
     return hashlib.sha256(("chatapp_v3_" + pwd).encode()).hexdigest()
 
@@ -119,14 +117,12 @@ def save_rooms():
     with open(ROOMS_FILE, "w") as f:
         json.dump(rooms, f)
         
-# ─────────────────────────────────────────────────────
-#  SHUTDOWN
-# ─────────────────────────────────────────────────────
+#  ------------SHUTDOWN---------------------------
 
 def shutdown():
     global running
     running = False
-    print("\n🛑  Shutting down…")
+    print("\n  Shutting down…")
     for info in list(clients.values()):
         try:
             send(info["sock"], {"type": "server_shutdown"})
@@ -145,10 +141,8 @@ def console_watcher():
         if input().strip().lower() in ("stop", "quit", "exit"):
             shutdown()
             break
-
-# ─────────────────────────────────────────────────────
-#  CLIENT THREAD
-# ─────────────────────────────────────────────────────
+        
+#  ----------------------CLIENT THREAD---------------------------
 
 def client_thread(sock):
     username = None
@@ -182,7 +176,6 @@ def _auth(sock) -> str | None:
     if not msg:
         return None
 
-    # Optional registration step
     if msg.get("type") == "register":
         uname = msg.get("username", "").strip()
         pwd   = msg.get("password", "")
@@ -196,11 +189,10 @@ def _auth(sock) -> str | None:
         save_users()
         print(f"[{time.strftime('%H:%M:%S')}] {uname} registered")
         send(sock, {"type": "auth_result", "success": True, "message": "Registered! Please log in."})
-        msg = recv(sock)  # expect login next
+        msg = recv(sock)  
         if not msg:
             return None
 
-    # Login
     if msg.get("type") == "login":
         uname = msg.get("username", "").strip()
         pwd   = msg.get("password", "")
@@ -214,7 +206,6 @@ def _auth(sock) -> str | None:
         print(f"[{time.strftime('%H:%M:%S')}] {uname} logged in")
         with lock:
             clients[uname] = {"sock": sock, "room": None}
-        # Send initial state
         send(sock, room_list_payload())
         push_online_list()
         return uname
@@ -231,7 +222,7 @@ def _session(sock, username: str):
 
         t = msg.get("type", "")
 
-        # ── CREATE ROOM ──────────────────────────────
+        #-------------CREATE ROOM ------------------------------
         if t == "create_room":
             name = msg.get("room_name", "").strip()
             pwd  = msg.get("password") or None
@@ -243,12 +234,11 @@ def _session(sock, username: str):
                 rooms[name] = {"creator": username, "password": pwd, "members": {}}
                 save_rooms()
             send(sock, {"type": "room_created", "room_name": name})
-            # broadcast updated room list to everyone
             rl = room_list_payload()
             for info in clients.values():
                 send(info["sock"], rl)
 
-        # ── JOIN ROOM ────────────────────────────────
+        #----------------------------JOIN ROOM---------------------------------
         elif t == "join_room":
             name = msg.get("room_name", "").strip()
             pwd  = msg.get("password") or None
@@ -260,7 +250,6 @@ def _session(sock, username: str):
             room_data = rooms[name]
             if room_data["password"] and room_data["password"] != pwd:
                 send(sock, {"type": "error", "message": "Wrong password."}); continue
-            # Leave old room first
             old = clients[username]["room"]
             if old and old in rooms:
                 rooms[old]["members"].pop(username, None)
@@ -279,7 +268,7 @@ def _session(sock, username: str):
             broadcast(name, {"type": "user_joined", "username": username, "room": name}, exclude=username)
             push_online_list()
 
-        # ── LEAVE ROOM ───────────────────────────────
+        #-----------------------LEAVE ROOM-----------------------------------
         elif t == "leave_room":
             room = clients[username]["room"]
             if room and room in rooms:
@@ -292,7 +281,7 @@ def _session(sock, username: str):
                 broadcast(room, {"type": "user_left", "username": username, "room": room})
                 push_online_list()
 
-        # ── CHAT MESSAGE ─────────────────────────────
+        # -----------------------CHAT MESSAGE--------------------------------
         elif t == "chat_message":
             room = clients[username]["room"]
             if not room:
@@ -304,15 +293,9 @@ def _session(sock, username: str):
                 "text": msg.get("text", ""),
                 "timestamp": time.strftime("%Y-%m-%dT%H:%M:%S")
             }
-            broadcast(room, payload)   # sender also receives own message via broadcast
+            broadcast(room, payload)   
 
-        # ── TYPING INDICATOR ─────────────────────────
-        elif t == "typing":
-            room = clients[username]["room"]
-            if room:
-                broadcast(room, {"type": "typing", "username": username}, exclude=username)
-
-        # ── PRIVATE MESSAGE ──────────────────────────
+        # -----------------------PRIVATE MESSAGE --------------------------------
         elif t == "private_message":
             target = msg.get("target", "")
             text   = msg.get("text", "")
@@ -329,7 +312,7 @@ def _session(sock, username: str):
             pm["echo"] = True
             send(sock, pm)
 
-        # ── KICK USER ────────────────────────────────
+        # -------------------------KICK USER -------------------------
         elif t == "kick_user":
             room   = msg.get("room_name", "")
             target = msg.get("target", "")
@@ -359,7 +342,7 @@ def _session(sock, username: str):
             broadcast(room, {"type": "user_left", "username": target, "room": room})
             push_online_list()
 
-        # ── DELETE ROOM ──────────────────────────────
+        # ----------------------------DELETE ROOM -------------------------------
         elif t == "delete_room":
             room = msg.get("room_name", "")
             if room not in rooms:
@@ -378,11 +361,11 @@ def _session(sock, username: str):
             for info in clients.values():
                 send(info["sock"], rl)
 
-        # ── LIST ROOMS ───────────────────────────────
+        # ------------------LIST ROOMS -----------------------------
         elif t == "list_rooms":
             send(sock, room_list_payload())
 
-        # ── ROOM MEMBERS ─────────────────────────────
+        # -------------ROOM MEMBERS ----------------------------
         elif t == "room_members":
             room = msg.get("room_name") or clients[username]["room"]
             if not room or room not in rooms:
@@ -394,21 +377,9 @@ def _session(sock, username: str):
                 "creator": rooms[room]["creator"]
             })
 
-        # ── REACTION ─────────────────────────────────
-        elif t == "reaction":
-            room = clients[username]["room"]
-            if not room:
-                continue
-            broadcast(room, {
-                "type": "reaction_update",
-                "message_id": msg.get("message_id", ""),
-                "emoji": msg.get("emoji", ""),
-                "by": username
-            })
+    
 
-# ─────────────────────────────────────────────────────
-#  ENTRY POINT
-# ─────────────────────────────────────────────────────
+#  --------------------------ENTRY POINT---------------------
 
 load_users()
 load_rooms()
@@ -420,8 +391,8 @@ server.listen()
 server.settimeout(1)
 
 
-print(f"🚀  Server running on {HOST}:{PORT}")
-print("    Type  stop  to shut down.\n")
+print(f" -- 🚀 Server running on {HOST}:{PORT} --")
+print("      Type  stop  to shut down.\n")
 
 threading.Thread(target=console_watcher, daemon=True).start()
 
@@ -434,4 +405,4 @@ while running:
     except Exception:
         break
 
-print("✅  Server stopped.")
+print(" ---- ⚠️Server stopped.----")

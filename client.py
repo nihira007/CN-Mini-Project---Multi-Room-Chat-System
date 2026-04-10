@@ -1,12 +1,12 @@
 """
-╔══════════════════════════════════════════════════════╗
-║   Multi-Room Chat Client  — v3.0                     ║
-║                                                      ║
-║   Usage:                                             ║
-║     python client.py                                 ║
-║     python client.py --host 192.168.1.10             ║
-║     python client.py --host 192.168.1.10 --port 9000 ║
-╚══════════════════════════════════════════════════════╝
+════════════════════════════════════════════════════════
+   Multi-Room Chat Client                       
+                                                    
+    Usage:                                             
+     python client.py                                 
+     python client.py --host 192.168.1.10            
+     python client.py --host 192.168.1.10 --port 9000 
+════════════════════════════════════════════════════════
 """
 
 import socket
@@ -16,29 +16,19 @@ import sys
 import os
 import time
 import argparse
-
-# ─────────────────────────────────────────────────────
-#  CONFIG
-# ─────────────────────────────────────────────────────
+# ----------------------CONFIG-------------------------
 DEFAULT_HOST  = "127.0.0.1"   # change to server IP for LAN play
-DEFAULT_PORT  = 9000
-TYPING_DELAY  = 1           # seconds idle before typing stops
+DEFAULT_PORT  = 9000         
 
-# ─────────────────────────────────────────────────────
-#  STATE
-# ─────────────────────────────────────────────────────
+#  ----------------STATE--------------------------------
 username      = None
 current_room  = None
 online_users  = []
 sock          = None
 running       = True
-last_typed    = 0.0
-typing_active = False
 print_lock    = threading.Lock()
 
-# ─────────────────────────────────────────────────────
-#  NETWORK
-# ─────────────────────────────────────────────────────
+#  --------------------NETWORK----------------------------
 
 def send_msg(payload: dict):
     try:
@@ -68,9 +58,6 @@ def _exact(n: int) -> bytes | None:
         buf += chunk
     return buf
 
-# ─────────────────────────────────────────────────────
-#  ANSI COLOURS
-# ─────────────────────────────────────────────────────
 R   = "\033[0m"
 B   = "\033[1m"
 DIM = "\033[2m"
@@ -83,9 +70,7 @@ PRP = "\033[95m"
 WHT = "\033[97m"
 ORG = "\033[33m"
 
-# ─────────────────────────────────────────────────────
-#  DISPLAY HELPERS
-# ─────────────────────────────────────────────────────
+#  -----------------------DISPLAY HELPERS------------------------
 
 def tprint(text=""):
     with print_lock:
@@ -104,22 +89,19 @@ def fmt_ts(ts: str) -> str:
 
 
 def header():
-    tprint(CYN + B + "╔══════════════════════════════════════════════════════╗" + R)
-    tprint(CYN + B + "║   💬  Multi-Room Chat  v3.0                          ║" + R)
-    tprint(CYN + B + "╚══════════════════════════════════════════════════════╝" + R)
+    tprint(CYN + B + " ══════════════════════════════════════════════════════ " + R)
+    tprint(CYN + B + "    💬  Multi-Room Chat                                 " + R)
+    tprint(CYN + B + " ══════════════════════════════════════════════════════ " + R)
 
 
 def print_chat(msg: dict):
     ts    = fmt_ts(msg.get("timestamp", ""))
     user  = msg.get("username", "?")
     text  = msg.get("text", "")
-    mid   = msg.get("id", "")[-6:]
     color = YLW if user == username else WHT
-    # Highlight @mentions
     if f"@{username}" in text:
         text = text.replace(f"@{username}", f"{RED}@{username}{R}")
-    id_hint = f" {DIM}[{mid}]{R}" if mid else ""
-    tprint(f"{DIM}[{ts}]{R} {color}{B}{user}{R}{id_hint}: {text}")
+    tprint(f"{DIM}[{ts}]{R} {color}{B}{user}{R}: {text}")
 
 
 def print_pm(msg: dict):
@@ -186,7 +168,7 @@ def print_online(users: list):
 
 def print_help():
     tprint(f"""
-{CYN}{B}╔─ Commands ─────────────────────────────────────────╗{R}
+{CYN}{B}─ Commands ─────────────────────────────────────────{R}
 {YLW}  /create <room>          {R}  Create a room (prompts password)
 {YLW}  /join <room>            {R}  Join a room   (prompts password if locked)
 {YLW}  /leave                  {R}  Leave current room
@@ -199,7 +181,7 @@ def print_help():
 {YLW}  /clear                  {R}  Clear screen
 {YLW}  /help                   {R}  Show this help
 {YLW}  /quit                   {R}  Exit
-{CYN}{B}╚────────────────────────────────────────────────────╝{R}
+{CYN}{B}────────────────────────────────────────────────────{R}
 {DIM}  Tip: @username to mention someone.{R}
 """)
 
@@ -210,9 +192,8 @@ def show_prompt():
         sys.stdout.write(f"\r{GRN}{B}{username}{R}@{CYN}{room_str}{R} » ")
         sys.stdout.flush()
 
-# ─────────────────────────────────────────────────────
-#  RECEIVER THREAD
-# ─────────────────────────────────────────────────────
+
+#  -----------------------RECEIVER THREAD-------------------------------
 
 def message_receiver():
     global current_room, online_users, running
@@ -270,16 +251,7 @@ def message_receiver():
 
         elif t == "online_list":
             online_users = msg.get("users", [])
-            # Only auto-print if explicitly requested (suppress background pushes)
-            # We'll handle the /online command separately
-
-        elif t == "typing":
-            other = msg.get("username", "?")
-            with print_lock:
-                sys.stdout.write(f"\r{DIM}{other} is typing…{' ' * 20}\r")
-                sys.stdout.flush()
-            continue  
-
+  
         elif t == "reaction_update":
             mid   = msg.get("message_id", "")[-6:]
             emoji = msg.get("emoji", "")
@@ -299,66 +271,48 @@ def message_receiver():
 
         show_prompt()
 
-# ─────────────────────────────────────────────────────
-#  TYPING MONITOR THREAD
-# ─────────────────────────────────────────────────────
 
-def typing_monitor():
-    global typing_active
-    while running:
-        time.sleep(0.4)
-        if typing_active and current_room:
-            if time.time() - last_typed < TYPING_DELAY:
-                send_msg({"type": "typing"})
-            else:
-                typing_active = False
-
-# ─────────────────────────────────────────────────────
-#  INPUT HANDLER  — maps client commands → server protocol
-# ─────────────────────────────────────────────────────
+#  ---------------INPUT HANDLER (maps client commands → server protocol)------------
 
 def handle_input(line: str):
-    global last_typed, typing_active
 
     line = line.strip()
     if not line:
         return
 
-    # ── Regular chat message ──────────────────────────
+    # ------------------ Regular chat message ----------------
     if not line.startswith("/"):
         if not current_room:
             print_error("Join a room first  (/join <room>)")
             return
         send_msg({"type": "chat_message", "text": line})
-        last_typed    = time.time()
-        typing_active = True
         return
 
     parts = line.split()
     cmd   = parts[0].lower()
 
-    # ── /help ─────────────────────────────────────────
+    #  /help 
     if cmd in ("/help", "/?"):
         print_help()
 
-    # ── /quit ─────────────────────────────────────────
+    # /quit 
     elif cmd in ("/quit", "/exit"):
         tprint("\nGoodbye! 👋")
         sys.exit(0)
 
-    # ── /clear ────────────────────────────────────────
+    #  /clear 
     elif cmd == "/clear":
         clear(); header()
 
-    # ── /rooms ────────────────────────────────────────
+    #  /rooms 
     elif cmd == "/rooms":
         send_msg({"type": "list_rooms"})
 
-    # ── /online ───────────────────────────────────────
+    #  /online 
     elif cmd == "/online":
         print_online(online_users)
 
-    # ── /create <room> ────────────────────────────────
+    #  /create <room>
     elif cmd == "/create":
         if len(parts) < 2:
             return print_error("Usage: /create <room_name>")
@@ -366,7 +320,7 @@ def handle_input(line: str):
         pwd  = input(f"  Set password for #{name} (press Enter to skip): ").strip() or None
         send_msg({"type": "create_room", "room_name": name, "password": pwd})
 
-    # ── /join <room> ──────────────────────────────────
+    #  /join <room>
     elif cmd == "/join":
         if len(parts) < 2:
             return print_error("Usage: /join <room_name>")
@@ -374,16 +328,16 @@ def handle_input(line: str):
         pwd  = input(f"  Password for #{name} (press Enter if open): ").strip() or None
         send_msg({"type": "join_room", "room_name": name, "password": pwd})
 
-    # ── /leave ────────────────────────────────────────
+    # /leave 
     elif cmd == "/leave":
         send_msg({"type": "leave_room"})
 
-    # ── /members [room] ───────────────────────────────
+    #  /members [room] 
     elif cmd == "/members":
         room = parts[1] if len(parts) > 1 else None
         send_msg({"type": "room_members", "room_name": room})
 
-    # ── /pm <user> <text…> ────────────────────────────
+    #  /pm <user> <text…>
     elif cmd == "/pm":
         if len(parts) < 3:
             return print_error("Usage: /pm <username> <message>")
@@ -391,13 +345,13 @@ def handle_input(line: str):
         text   = " ".join(parts[2:])
         send_msg({"type": "private_message", "target": target, "text": text})
 
-    # ── /kick <room> <user> ───────────────────────────
+    # /kick <room> <user> 
     elif cmd == "/kick":
         if len(parts) < 3:
             return print_error("Usage: /kick <room> <username>")
         send_msg({"type": "kick_user", "room_name": parts[1], "target": parts[2]})
 
-    # ── /delete <room> ────────────────────────────────
+    # /delete <room> 
     elif cmd == "/delete":
         if len(parts) < 2:
             return print_error("Usage: /delete <room>")
@@ -408,15 +362,14 @@ def handle_input(line: str):
     else:
         print_error(f"Unknown command '{cmd}'.  Type /help for a list.")
 
-# ─────────────────────────────────────────────────────
-#  AUTH FLOW  (runs before background threads start)
-# ─────────────────────────────────────────────────────
+
+#  -------------AUTH FLOW (runs before background threads start)--------------
 
 def auth_flow():
     global username
 
     header()
-    tprint(f"\n{CYN}Welcome! Register or log in to continue.{R}")
+    tprint(f"\n{CYN}👋 Welcome! Register or log in to continue.{R}")
     tprint(f"{DIM}  [l] Login    [r] Register{R}\n")
 
     while True:
@@ -459,14 +412,11 @@ def auth_flow():
     print_info(res.get("message", ""))
     username = uname
 
-# ─────────────────────────────────────────────────────
-#  MAIN
-# ─────────────────────────────────────────────────────
+#  -----------------------------MAIN---------------------------
 
 def main(host: str, port: int):
     global sock, running
 
-    # Enable ANSI colours on Windows
     if os.name == "nt":
         os.system("color")
         try:
@@ -490,9 +440,7 @@ def main(host: str, port: int):
 
     auth_flow()
 
-    # Start background threads AFTER auth is complete
     threading.Thread(target=message_receiver, daemon=True).start()
-    threading.Thread(target=typing_monitor,   daemon=True).start()
 
     clear(); header()
     tprint(f"\n{GRN}Logged in as {B}{username}{R}")
@@ -517,7 +465,7 @@ def main(host: str, port: int):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Multi-Room Chat Client v3.0")
+    parser = argparse.ArgumentParser(description="Multi-Room Chat Client")
     parser.add_argument("--host", default=DEFAULT_HOST, help="Server IP address")
     parser.add_argument("--port", type=int, default=DEFAULT_PORT, help="Server port")
     args = parser.parse_args()
