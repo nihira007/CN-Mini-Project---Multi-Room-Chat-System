@@ -1,0 +1,3 @@
+echo users.json >> .gitignore
+echo rooms.json >> .gitignore
+echo __pycache__/ >> .gitignore
