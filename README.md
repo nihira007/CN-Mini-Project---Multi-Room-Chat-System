@@ -58,20 +58,19 @@ Different Laptop (Same WiFi / LAN)
 python client.py --host <SERVER_IP>
 ```
 
+
 ---
 
-##  Commands
+## 📸 Screenshots
 
-* `/create <room>`
-* `/join <room>`
-* `/leave`
-* `/rooms`
-* `/members`
-* `/online`
-* `/pm <user> <msg>`
-* `/kick <room> <user>`
-* `/delete <room>`
-* `/help`
+###  Login
+![Login](screenshots/login.png)
+
+###  Commands
+![Commands](screenshots/commands.png)
+
+###  Chat Room
+![Chat](screenshots/chat.png)
 
 ---
 
