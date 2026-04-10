@@ -1,21 +1,18 @@
-﻿# CN-Mini-Project
+﻿# 💬 **Multi-Room Chat System**
 
-# Multi-Room Chat System
-
-A real-time multi-user chat application built using Python socket programming and multithreading.
+A real-time multi-user chat application built using Python socket programming and multithreading, supporting multiple chat rooms and real-time communication.
 
 ---
 
-##  Features
-
-*  User Registration & Login (persistent)
-*  Multi-room chat system
-*  Password-protected rooms
-*  Private messaging
-*  Real-time communication
-*  Room admin controls (kick, delete)
-*  Persistent storage (users & rooms)
-*  Live server activity in terminal
+## Features
+- User Authentication (Register/Login with persistence)
+- Multi-Room Chat System
+- Password-Protected Rooms
+- Private Messaging (DMs)
+- Real-Time Communication
+- Admin Controls (Kick users, Delete rooms)
+- Persistent Storage (users & rooms)
+- Live Server Activity in Terminal
 
 ---
 
@@ -23,18 +20,21 @@ A real-time multi-user chat application built using Python socket programming an
 
 * Client-Server Model
 * TCP Socket Programming
-* JSON-based communication
-* Multithreaded Server
+* JSON-based Communication 
+* Multithreaded Server (handles multiple clients simultaneously)
 
 ---
 
 ##  Project Structure
 
 ```
-server.py
-client.py
-users.json
-rooms.json
+ Multi-Room-Chat-System
+ ├── server.py
+ ├── client.py
+ ├── users.json
+ ├── rooms.json
+ ├── screenshots/
+ └── README.md
 ```
 
 ---
@@ -57,7 +57,11 @@ Different Laptop (Same WiFi / LAN)
 ```
 python client.py --host <SERVER_IP>
 ```
+Example:
 
+```bash
+python client.py --host 192.168.1.10
+```
 
 ---
 
@@ -88,6 +92,7 @@ Chat Room
 * Works only within LAN
 * No encryption implemented
 * CLI-based (no GUI)
+* No permanent chat history
 
 ---
 
@@ -97,7 +102,7 @@ Chat Room
 * Chat history storage
 * Secure communication (encryption)
 * Cloud deployment
+* Mobile App Integration
 
 ---
-
 
