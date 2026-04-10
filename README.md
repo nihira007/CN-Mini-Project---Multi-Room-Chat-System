@@ -61,15 +61,15 @@ python client.py --host <SERVER_IP>
 
 ---
 
-## 📸 Screenshots
+##  Screenshots
 
-###  Login
+Login
 ![Login](screenshots/Login.png)
 
-###  Commands
+Commands
 ![Commands](screenshots/Commands.png)
 
-###  Chat Room
+Chat Room
 ![Chat](screenshots/Chat.png)
 
 ---
